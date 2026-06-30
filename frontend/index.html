@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Deal Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -26,7 +27,7 @@
         }
         .tabs {
             display: flex;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto 24px;
             border-radius: 12px;
             overflow: hidden;
@@ -54,7 +55,7 @@
             background: #16213e;
             border-radius: 12px;
             padding: 24px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto 24px;
         }
         .card h2 {
@@ -73,6 +74,16 @@
             font-size: 15px;
         }
         input::placeholder { color: #888; }
+        select {
+            width: 100%;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #0f3460;
+            color: #eee;
+            font-size: 15px;
+        }
         button {
             width: 100%;
             padding: 12px;
@@ -90,7 +101,7 @@
             background: #16213e;
             border-radius: 12px;
             padding: 16px 20px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto 12px;
             display: flex;
             justify-content: space-between;
@@ -103,7 +114,7 @@
             background: #16213e;
             border-radius: 12px;
             padding: 16px 20px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto 12px;
             border-left: 4px solid #4ecca3;
         }
@@ -112,15 +123,31 @@
         .rec-reason { font-size: 0.9rem; color: #ccc; margin-top: 8px; }
         .status { text-align: center; color: #aaa; margin-top: 12px; font-size: 14px; }
         .loading { text-align: center; color: #e94560; padding: 20px; font-size: 14px; }
+        .chart-container {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 700px;
+            margin: 0 auto 24px;
+        }
+        .price-badge {
+            background: #e94560;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <h1>🎮 Game Deal Tracker</h1>
-    <p class="subtitle">Track deals and discover new games with AI</p>
+    <p class="subtitle">Track deals, view price history, and discover new games with AI</p>
 
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('tracker')">Deal Tracker</button>
-        <button class="tab" onclick="switchTab('recommend')">AI Recommendations</button>
+        <button class="tab active" onclick="switchTab('tracker', this)">Deal Tracker</button>
+        <button class="tab" onclick="switchTab('history', this)">Price History</button>
+        <button class="tab" onclick="switchTab('recommend', this)">AI Recommendations</button>
     </div>
 
     <!-- Deal Tracker Tab -->
@@ -134,6 +161,20 @@
             <p class="status" id="addStatus"></p>
         </div>
         <div id="gameList"></div>
+    </div>
+
+    <!-- Price History Tab -->
+    <div id="history" class="tab-content">
+        <div class="card">
+            <h2>View price history</h2>
+            <select id="gameSelect" onchange="loadHistory()">
+                <option value="">Select a game...</option>
+            </select>
+        </div>
+        <div class="chart-container" id="chartContainer" style="display:none">
+            <canvas id="priceChart"></canvas>
+        </div>
+        <p class="status" id="historyStatus"></p>
     </div>
 
     <!-- AI Recommendations Tab -->
@@ -151,12 +192,13 @@
 
     <script>
         const API_URL = 'https://wfyzse8zm0.execute-api.us-east-2.amazonaws.com';
+        let priceChart = null;
 
-        function switchTab(tab) {
+        function switchTab(tab, el) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.getElementById(tab).classList.add('active');
-            event.target.classList.add('active');
+            el.classList.add('active');
         }
 
         async function getGames() {
@@ -164,6 +206,16 @@
                 const response = await fetch(`${API_URL}/games`);
                 const games = await response.json();
                 const list = document.getElementById('gameList');
+                const select = document.getElementById('gameSelect');
+
+                select.innerHTML = '<option value="">Select a game...</option>';
+                games.forEach(game => {
+                    const opt = document.createElement('option');
+                    opt.value = game.title;
+                    opt.textContent = game.title;
+                    select.appendChild(opt);
+                });
+
                 if (games.length === 0) {
                     list.innerHTML = '<p style="text-align:center;color:#aaa;padding:20px">No games tracked yet. Add one above!</p>';
                     return;
@@ -177,11 +229,79 @@
                             <div class="game-title">${game.title}</div>
                             <div class="game-details">Alert when below $${game.targetPrice} • ${game.email}</div>
                         </div>
+                        <span class="price-badge">$${game.targetPrice}</span>
                     `;
                     list.appendChild(card);
                 });
             } catch (err) {
                 console.error('Error fetching games:', err);
+            }
+        }
+
+        async function loadHistory() {
+            const title = document.getElementById('gameSelect').value;
+            const container = document.getElementById('chartContainer');
+            const status = document.getElementById('historyStatus');
+
+            if (!title) {
+                container.style.display = 'none';
+                return;
+            }
+
+            status.textContent = 'Loading price history...';
+
+            try {
+                const response = await fetch(`${API_URL}/history?title=${encodeURIComponent(title)}`);
+                const history = await response.json();
+
+                if (history.length === 0) {
+                    status.textContent = 'No price history yet for this game.';
+                    container.style.display = 'none';
+                    return;
+                }
+
+                status.textContent = '';
+                container.style.display = 'block';
+
+                const labels = history.map(h => new Date(h.timestamp).toLocaleDateString());
+                const prices = history.map(h => h.price);
+
+                if (priceChart) priceChart.destroy();
+
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                priceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: `${title} Price ($)`,
+                            data: prices,
+                            borderColor: '#e94560',
+                            backgroundColor: 'rgba(233, 69, 96, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#e94560',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: '#eee' } }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#aaa' }, grid: { color: '#333' } },
+                            y: {
+                                ticks: { color: '#aaa', callback: v => '$' + v },
+                                grid: { color: '#333' }
+                            }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                status.textContent = 'Error loading price history.';
+                console.error(err);
             }
         }
 

@@ -3,13 +3,15 @@ import boto3
 import urllib.request
 import urllib.parse
 from decimal import Decimal
+from datetime import datetime
 
 def lambda_handler(event, context):
     dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table('Games')
+    games_table = dynamodb.Table('Games')
+    history_table = dynamodb.Table('PriceHistory')
     ses = boto3.client('ses', region_name='us-east-2')
     
-    response = table.scan()
+    response = games_table.scan()
     games = response['Items']
     
     for game in games:
@@ -20,7 +22,10 @@ def lambda_handler(event, context):
         encoded_title = urllib.parse.quote(title)
         url = f'https://www.cheapshark.com/api/1.0/games?title={encoded_title}&limit=1'
         
-        req = urllib.request.Request(url, headers={'User-Agent': 'GameDealTracker/1.0 (jaygera13@gmail.com)'})
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'GameDealTracker/1.0 (jaygera13@gmail.com)'}
+        )
         
         try:
             with urllib.request.urlopen(req) as resp:
@@ -28,6 +33,13 @@ def lambda_handler(event, context):
                 
             if results:
                 current_price = float(results[0]['cheapest'])
+                timestamp = datetime.utcnow().isoformat()
+                
+                history_table.put_item(Item={
+                    'gameTitle': title,
+                    'timestamp': timestamp,
+                    'price': Decimal(str(current_price))
+                })
                 
                 if current_price <= target_price:
                     send_alert_email(ses, email, title, current_price, target_price)
