@@ -24,6 +24,32 @@
             color: #aaa;
             margin-bottom: 40px;
         }
+        .tabs {
+            display: flex;
+            max-width: 600px;
+            margin: 0 auto 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            background: #16213e;
+            color: #aaa;
+            font-size: 15px;
+            border: none;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #e94560;
+            color: white;
+            font-weight: bold;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .card {
             background: #16213e;
             border-radius: 12px;
@@ -59,6 +85,7 @@
             font-weight: bold;
         }
         button:hover { background: #c73652; }
+        button:disabled { background: #666; cursor: not-allowed; }
         .game-card {
             background: #16213e;
             border-radius: 12px;
@@ -72,45 +99,75 @@
         }
         .game-title { font-size: 1rem; font-weight: bold; }
         .game-details { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
-        .no-games {
-            text-align: center;
-            color: #aaa;
+        .rec-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 16px 20px;
             max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0 auto 12px;
+            border-left: 4px solid #4ecca3;
         }
-        .status { text-align: center; color: #aaa; margin-bottom: 16px; font-size: 14px; }
+        .rec-title { font-size: 1rem; font-weight: bold; color: #4ecca3; }
+        .rec-genre { font-size: 0.75rem; color: #aaa; margin-top: 2px; }
+        .rec-reason { font-size: 0.9rem; color: #ccc; margin-top: 8px; }
+        .status { text-align: center; color: #aaa; margin-top: 12px; font-size: 14px; }
+        .loading { text-align: center; color: #e94560; padding: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
     <h1>🎮 Game Deal Tracker</h1>
-    <p class="subtitle">Add games you want and get emailed when the price drops</p>
+    <p class="subtitle">Track deals and discover new games with AI</p>
 
-    <div class="card">
-        <h2>Track a new game</h2>
-        <input type="text" id="titleInput" placeholder="Game title (e.g. Elden Ring)"/>
-        <input type="number" id="priceInput" placeholder="Alert me when price drops below ($)"/>
-        <input type="email" id="emailInput" placeholder="Your email address"/>
-        <button onclick="addGame()">Add Game</button>
-        <p class="status" id="status"></p>
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('tracker')">Deal Tracker</button>
+        <button class="tab" onclick="switchTab('recommend')">AI Recommendations</button>
     </div>
 
-    <div id="gameList"></div>
+    <!-- Deal Tracker Tab -->
+    <div id="tracker" class="tab-content active">
+        <div class="card">
+            <h2>Track a new game</h2>
+            <input type="text" id="titleInput" placeholder="Game title (e.g. Elden Ring)"/>
+            <input type="number" id="priceInput" placeholder="Alert me when price drops below ($)"/>
+            <input type="email" id="emailInput" placeholder="Your email address"/>
+            <button onclick="addGame()">Add Game</button>
+            <p class="status" id="addStatus"></p>
+        </div>
+        <div id="gameList"></div>
+    </div>
+
+    <!-- AI Recommendations Tab -->
+    <div id="recommend" class="tab-content">
+        <div class="card">
+            <h2>Get AI game recommendations</h2>
+            <input type="text" id="rec1" placeholder="Game you love (e.g. Elden Ring)"/>
+            <input type="text" id="rec2" placeholder="Another game you love (e.g. Portal)"/>
+            <input type="text" id="rec3" placeholder="One more (optional)"/>
+            <button id="recBtn" onclick="getRecommendations()">Get Recommendations</button>
+            <p class="status" id="recStatus"></p>
+        </div>
+        <div id="recList"></div>
+    </div>
 
     <script>
         const API_URL = 'https://wfyzse8zm0.execute-api.us-east-2.amazonaws.com';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
 
         async function getGames() {
             try {
                 const response = await fetch(`${API_URL}/games`);
                 const games = await response.json();
                 const list = document.getElementById('gameList');
-
                 if (games.length === 0) {
-                    list.innerHTML = '<p class="no-games">No games tracked yet. Add one above!</p>';
+                    list.innerHTML = '<p style="text-align:center;color:#aaa;padding:20px">No games tracked yet. Add one above!</p>';
                     return;
                 }
-
                 list.innerHTML = '';
                 games.forEach(game => {
                     const card = document.createElement('div');
@@ -132,22 +189,18 @@
             const title = document.getElementById('titleInput').value.trim();
             const price = document.getElementById('priceInput').value.trim();
             const email = document.getElementById('emailInput').value.trim();
-            const status = document.getElementById('status');
-
+            const status = document.getElementById('addStatus');
             if (!title || !price || !email) {
                 status.textContent = 'Please fill in all fields.';
                 return;
             }
-
             status.textContent = 'Adding game...';
-
             try {
                 await fetch(`${API_URL}/games`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title, targetPrice: parseFloat(price), email })
                 });
-
                 document.getElementById('titleInput').value = '';
                 document.getElementById('priceInput').value = '';
                 document.getElementById('emailInput').value = '';
@@ -155,7 +208,52 @@
                 getGames();
             } catch (err) {
                 status.textContent = 'Something went wrong. Please try again.';
-                console.error(err);
+            }
+        }
+
+        async function getRecommendations() {
+            const g1 = document.getElementById('rec1').value.trim();
+            const g2 = document.getElementById('rec2').value.trim();
+            const g3 = document.getElementById('rec3').value.trim();
+            const status = document.getElementById('recStatus');
+            const btn = document.getElementById('recBtn');
+            const list = document.getElementById('recList');
+
+            if (!g1 || !g2) {
+                status.textContent = 'Please enter at least 2 games.';
+                return;
+            }
+
+            const games = [g1, g2, g3].filter(g => g);
+            btn.disabled = true;
+            btn.textContent = 'Getting recommendations...';
+            status.textContent = '';
+            list.innerHTML = '<p class="loading">🤖 AI is analyzing your taste...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/recommend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ games })
+                });
+                const recommendations = await response.json();
+                list.innerHTML = '';
+                recommendations.forEach(rec => {
+                    const card = document.createElement('div');
+                    card.className = 'rec-card';
+                    card.innerHTML = `
+                        <div class="rec-title">${rec.title}</div>
+                        <div class="rec-genre">${rec.genre}</div>
+                        <div class="rec-reason">${rec.reason}</div>
+                    `;
+                    list.appendChild(card);
+                });
+            } catch (err) {
+                list.innerHTML = '';
+                status.textContent = 'Something went wrong. Please try again.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Get Recommendations';
             }
         }
 
