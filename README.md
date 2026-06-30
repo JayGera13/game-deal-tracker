@@ -1,16 +1,33 @@
 # 🎮 Game Deal Tracker
 
-A fully serverless, event-driven application that tracks PC game prices and automatically 
-sends email alerts when a game drops below your target price.
+A fully serverless, event-driven application that tracks PC game prices, 
+automatically sends email alerts when a game drops below your target price, 
+and uses AI to recommend games based on your taste.
 
 ## Live Demo
 http://jay-game-tracker.s3-website.us-east-2.amazonaws.com
 
+## Features
+- Track unlimited games with custom price thresholds
+- Fully automated daily price monitoring via EventBridge — no manual triggers needed
+- Real-time price data from CheapShark API across Steam and other stores
+- Email alerts via Amazon SES when deals are found
+- AI-powered game recommendations using Claude (Anthropic) via Lambda
+- Serverless architecture — zero servers to manage
+
 ## How It Works
+
+### Deal Tracker
 1. User adds a game, target price, and email through the web app
 2. AWS EventBridge triggers a price check every 24 hours automatically
-3. A Lambda function queries the CheapShark API for current prices
+3. Lambda queries the CheapShark API for current game prices
 4. If a deal is found, Amazon SES sends an email alert instantly
+
+### AI Recommendations
+1. User enters 2-3 games they enjoy
+2. Lambda sends a request to Claude AI via the Anthropic API
+3. Claude analyzes the user's taste and returns 5 personalized recommendations
+4. Results are displayed instantly with genre tags and explanations
 
 ## Architecture
 - **Frontend** — HTML/CSS/JavaScript hosted on Amazon S3
@@ -19,6 +36,8 @@ http://jay-game-tracker.s3-website.us-east-2.amazonaws.com
 - **Database** — Amazon DynamoDB (NoSQL)
 - **Scheduler** — Amazon EventBridge (runs price checks daily)
 - **Email** — Amazon SES (sends deal alert emails)
+- **AI** — Anthropic Claude via Lambda (game recommendations)
+- **Secrets** — AWS Systems Manager Parameter Store (secure API key storage)
 - **Price Data** — CheapShark API (free public game pricing API)
 
 ## AWS Services Used
@@ -29,24 +48,28 @@ http://jay-game-tracker.s3-website.us-east-2.amazonaws.com
 - Amazon EventBridge
 - Amazon SES
 - AWS IAM
-
-## Features
-- Track unlimited games with custom price thresholds
-- Fully automated daily price monitoring — no manual triggers needed
-- Real-time price data from CheapShark across Steam and other stores
-- Email alerts when deals are found
-- Serverless architecture — zero servers to manage
+- AWS Systems Manager Parameter Store
 
 ## API Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | /games | Retrieve all tracked games |
 | POST | /games | Add a new game to track |
+| POST | /recommend | Get AI game recommendations |
+
+## Lambda Functions
+| Function | Trigger | Description |
+|----------|---------|-------------|
+| addGame | API Gateway POST /games | Saves a new game to DynamoDB |
+| getGames | API Gateway GET /games | Returns all tracked games |
+| checkDeals | EventBridge (daily) | Checks prices and sends email alerts |
+| recommendGames | API Gateway POST /recommend | Returns AI game recommendations |
 
 ## Deployment
 All Lambda functions are deployed via AWS CLI using zip packaging.
-Infrastructure is hosted entirely on AWS free tier services.
+API keys are stored securely in AWS Systems Manager Parameter Store.
+Infrastructure is hosted entirely on AWS.
 
 ## Notes
-- SES is configured in sandbox mode — emails are sent from and to verified addresses only
-- In a production environment, SES would be moved out of sandbox mode to send to any address
+- SES is configured in sandbox mode for development
+- In production, SES would be moved out of sandbox to send to any address
