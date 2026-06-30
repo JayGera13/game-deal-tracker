@@ -40,7 +40,7 @@
             cursor: pointer;
             background: #16213e;
             color: #aaa;
-            font-size: 15px;
+            font-size: 14px;
             border: none;
             transition: all 0.2s;
         }
@@ -60,8 +60,14 @@
         }
         .card h2 {
             font-size: 1.1rem;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
             color: #e94560;
+        }
+        .card p {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            line-height: 1.5;
         }
         input {
             width: 100%;
@@ -138,6 +144,16 @@
             font-size: 0.85rem;
             font-weight: bold;
         }
+        .highlight-box {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border-left: 3px solid #4ecca3;
+            font-size: 0.85rem;
+            color: #4ecca3;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -148,6 +164,7 @@
         <button class="tab active" onclick="switchTab('tracker', this)">Deal Tracker</button>
         <button class="tab" onclick="switchTab('history', this)">Price History</button>
         <button class="tab" onclick="switchTab('recommend', this)">AI Recommendations</button>
+        <button class="tab" onclick="switchTab('dotd', this)">Deal of the Day</button>
     </div>
 
     <!-- Deal Tracker Tab -->
@@ -188,6 +205,27 @@
             <p class="status" id="recStatus"></p>
         </div>
         <div id="recList"></div>
+    </div>
+
+    <!-- Deal of the Day Tab -->
+    <div id="dotd" class="tab-content">
+        <div class="card">
+            <h2>🔥 Deal of the Day</h2>
+            <p>Get a daily email every morning at 9am with the best game deal of the day.</p>
+            <div class="highlight-box">
+                ✨ <strong>Personalized for you:</strong> If you're tracking games on the Deal Tracker tab, we'll use your taste to find deals in genres you actually enjoy — not just random discounts.
+            </div>
+            <input type="email" id="subscribeEmail" placeholder="Your email address"/>
+            <button onclick="subscribe()">Subscribe to Deal of the Day</button>
+            <p class="status" id="subscribeStatus"></p>
+        </div>
+        <div class="card" style="margin-top: 0;">
+            <h2>Unsubscribe</h2>
+            <p>Want to stop receiving Deal of the Day emails?</p>
+            <input type="email" id="unsubscribeEmail" placeholder="Your email address"/>
+            <button onclick="unsubscribe()" style="background: #444;">Unsubscribe</button>
+            <p class="status" id="unsubscribeStatus"></p>
+        </div>
     </div>
 
     <script>
@@ -374,6 +412,44 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Get Recommendations';
+            }
+        }
+
+        async function subscribe() {
+            const email = document.getElementById('subscribeEmail').value.trim();
+            const status = document.getElementById('subscribeStatus');
+            if (!email) {
+                status.textContent = 'Please enter your email.';
+                return;
+            }
+            status.textContent = 'Subscribing...';
+            try {
+                await fetch(`${API_URL}/subscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                document.getElementById('subscribeEmail').value = '';
+                status.textContent = '✅ Subscribed! You will receive your first Deal of the Day tomorrow at 9am.';
+            } catch (err) {
+                status.textContent = 'Something went wrong. Please try again.';
+            }
+        }
+
+        async function unsubscribe() {
+            const email = document.getElementById('unsubscribeEmail').value.trim();
+            const status = document.getElementById('unsubscribeStatus');
+            if (!email) {
+                status.textContent = 'Please enter your email.';
+                return;
+            }
+            status.textContent = 'Unsubscribing...';
+            try {
+                await fetch(`${API_URL}/unsubscribe?email=${encodeURIComponent(email)}`);
+                document.getElementById('unsubscribeEmail').value = '';
+                status.textContent = '✅ You have been unsubscribed.';
+            } catch (err) {
+                status.textContent = 'Something went wrong. Please try again.';
             }
         }
 
