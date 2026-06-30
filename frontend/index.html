@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Deal Tracker</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: #e94560;
+        }
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 40px;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            margin: 0 auto 24px;
+        }
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            color: #e94560;
+        }
+        input {
+            width: 100%;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #0f3460;
+            color: #eee;
+            font-size: 15px;
+        }
+        input::placeholder { color: #888; }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #c73652; }
+        .game-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 16px 20px;
+            max-width: 600px;
+            margin: 0 auto 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #e94560;
+        }
+        .game-title { font-size: 1rem; font-weight: bold; }
+        .game-details { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
+        .no-games {
+            text-align: center;
+            color: #aaa;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status { text-align: center; color: #aaa; margin-bottom: 16px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Game Deal Tracker</h1>
+    <p class="subtitle">Add games you want and get emailed when the price drops</p>
+
+    <div class="card">
+        <h2>Track a new game</h2>
+        <input type="text" id="titleInput" placeholder="Game title (e.g. Elden Ring)"/>
+        <input type="number" id="priceInput" placeholder="Alert me when price drops below ($)"/>
+        <input type="email" id="emailInput" placeholder="Your email address"/>
+        <button onclick="addGame()">Add Game</button>
+        <p class="status" id="status"></p>
+    </div>
+
+    <div id="gameList"></div>
+
+    <script>
+        const API_URL = 'https://wfyzse8zm0.execute-api.us-east-2.amazonaws.com';
+
+        async function getGames() {
+            try {
+                const response = await fetch(`${API_URL}/games`);
+                const games = await response.json();
+                const list = document.getElementById('gameList');
+
+                if (games.length === 0) {
+                    list.innerHTML = '<p class="no-games">No games tracked yet. Add one above!</p>';
+                    return;
+                }
+
+                list.innerHTML = '';
+                games.forEach(game => {
+                    const card = document.createElement('div');
+                    card.className = 'game-card';
+                    card.innerHTML = `
+                        <div>
+                            <div class="game-title">${game.title}</div>
+                            <div class="game-details">Alert when below $${game.targetPrice} • ${game.email}</div>
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+            } catch (err) {
+                console.error('Error fetching games:', err);
+            }
+        }
+
+        async function addGame() {
+            const title = document.getElementById('titleInput').value.trim();
+            const price = document.getElementById('priceInput').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+            const status = document.getElementById('status');
+
+            if (!title || !price || !email) {
+                status.textContent = 'Please fill in all fields.';
+                return;
+            }
+
+            status.textContent = 'Adding game...';
+
+            try {
+                await fetch(`${API_URL}/games`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, targetPrice: parseFloat(price), email })
+                });
+
+                document.getElementById('titleInput').value = '';
+                document.getElementById('priceInput').value = '';
+                document.getElementById('emailInput').value = '';
+                status.textContent = '✅ Game added! You will be emailed when the price drops.';
+                getGames();
+            } catch (err) {
+                status.textContent = 'Something went wrong. Please try again.';
+                console.error(err);
+            }
+        }
+
+        getGames();
+    </script>
+</body>
+</html>
