@@ -115,6 +115,21 @@ https://d2ehydjq9wvkn8.cloudfront.net
 All Lambda functions are deployed via AWS CLI using zip packaging.
 Frontend is hosted on S3 and distributed globally via CloudFront.
 
+## Infrastructure as Code
+The complete infrastructure is defined in `template.yaml` using AWS CloudFormation.
+To deploy a fresh copy of this application to a new AWS account:
+
+```bash
+aws cloudformation deploy \
+  --template-file template.yaml \
+  --stack-name game-tracker-stack \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides AnthropicApiKey=YOUR_API_KEY
+```
+
+This will provision all DynamoDB tables, Lambda functions, API Gateway routes, 
+EventBridge schedules, IAM roles, and S3 bucket automatically.
+
 ## Notes
 - SES is configured in sandbox mode — in production it would be moved to production access
 - Price history grows richer over time as the daily EventBridge schedule runs
