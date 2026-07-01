@@ -1,0 +1,461 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Game Deal Tracker - Serverless application infrastructure
+
+Parameters:
+  AnthropicApiKey:
+    Type: String
+    Description: Anthropic API key for AI recommendations
+    NoEcho: true
+
+Resources:
+
+  # ── DynamoDB Tables ──────────────────────────────────────────────────────────
+
+  GamesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Games
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: gameID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: gameID
+          KeyType: HASH
+
+  PriceHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: PriceHistory
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: gameTitle
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: gameTitle
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+
+  SubscribersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Subscribers
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+
+  # ── IAM Role for Lambda ───────────────────────────────────────────────────────
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: game-tracker-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonSESFullAccess
+        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # ── SSM Parameter for API Key ─────────────────────────────────────────────────
+
+  AnthropicApiKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /game-tracker/anthropic-api-key
+      Type: String
+      Value: !Ref AnthropicApiKey
+
+  # ── Lambda Functions ──────────────────────────────────────────────────────────
+
+  AddGameFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: addGame
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  GetGamesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: getGames
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  DeleteGameFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: deleteGame
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  CheckDealsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: checkDeals
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  GetPriceHistoryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: getPriceHistory
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  RecommendGamesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: recommendGames
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  SubscribeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: subscribe
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  UnsubscribeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: unsubscribe
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  DealOfTheDayFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: dealOfTheDay
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+
+  # ── API Gateway ───────────────────────────────────────────────────────────────
+
+  GameTrackerApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: game-tracker-api
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - content-type
+          - authorization
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      StageName: $default
+      AutoDeploy: true
+
+  # ── API Gateway Integrations ──────────────────────────────────────────────────
+
+  AddGameIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AddGameFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  GetGamesIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetGamesFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  DeleteGameIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteGameFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  GetPriceHistoryIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetPriceHistoryFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  RecommendGamesIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RecommendGamesFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  SubscribeIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SubscribeFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  UnsubscribeIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UnsubscribeFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  # ── API Gateway Routes ────────────────────────────────────────────────────────
+
+  PostGamesRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: POST /games
+      Target: !Sub integrations/${AddGameIntegration}
+
+  GetGamesRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: GET /games
+      Target: !Sub integrations/${GetGamesIntegration}
+
+  DeleteGameRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: DELETE /games/{gameID}
+      Target: !Sub integrations/${DeleteGameIntegration}
+
+  GetHistoryRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: GET /history
+      Target: !Sub integrations/${GetPriceHistoryIntegration}
+
+  RecommendRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: POST /recommend
+      Target: !Sub integrations/${RecommendGamesIntegration}
+
+  SubscribeRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: POST /subscribe
+      Target: !Sub integrations/${SubscribeIntegration}
+
+  UnsubscribeRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GameTrackerApi
+      RouteKey: GET /unsubscribe
+      Target: !Sub integrations/${UnsubscribeIntegration}
+
+  # ── Lambda Permissions for API Gateway ───────────────────────────────────────
+
+  AddGamePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AddGameFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  GetGamesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetGamesFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  DeleteGamePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteGameFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  GetPriceHistoryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetPriceHistoryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  RecommendGamesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RecommendGamesFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  SubscribePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SubscribeFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  UnsubscribePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UnsubscribeFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GameTrackerApi}/*/*
+
+  # ── EventBridge Schedules ─────────────────────────────────────────────────────
+
+  CheckDealsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: dailyDealCheck
+      ScheduleExpression: rate(1 day)
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt CheckDealsFunction.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  DealOfTheDaySchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: dealOfTheDaySchedule
+      ScheduleExpression: cron(0 13 * * ? *)
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt DealOfTheDayFunction.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: game-tracker-scheduler-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt CheckDealsFunction.Arn
+                  - !GetAtt DealOfTheDayFunction.Arn
+
+  # ── S3 Bucket for Frontend ────────────────────────────────────────────────────
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: jay-game-tracker
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${GameTrackerApi}.execute-api.${AWS::Region}.amazonaws.com
+
+  FrontendUrl:
+    Description: S3 website URL
+    Value: !Sub http://${FrontendBucket}.s3-website.${AWS::Region}.amazonaws.com
